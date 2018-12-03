@@ -1,0 +1,113 @@
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.7.4/d3.min.js"></script>
+        <style>
+          #explorer{
+            position: fixed;
+            z-index: 1;
+            top: 10;
+            left: 0;
+            height: 100%;
+            width:75%;
+          }
+          #topic_words{
+            position: fixed;
+            z-index: 1;
+            top: 10;
+            right: 0;
+            height: 100%;
+            width:30%;
+          }
+        </style>
+
+        <script>
+
+          function create_scatter(all_data){
+            let
+              xvals = [],
+              yvals = [],
+              labels = [],
+              sizes = []
+            ;
+
+            all_data.forEach(function(row){
+              xvals.push(+row['pc1']);
+              yvals.push(+row['pc2']);
+              labels.push(row['Topic']);
+              sizes.push(+row['ticker']);
+            })
+          var trace1 = {
+            x: xvals,
+            y: yvals,
+            text: labels,
+            marker:
+              {size: sizes},
+            mode: 'markers'
+          };
+
+          var data = [trace1];
+
+          var layout = {
+            title: 'Topic Explorer'
+          };
+
+          Plotly.newPlot('explorer', data, layout);
+
+      }
+
+      function create_bar(global_data){
+        let
+          probs = [],
+          words = []
+        ;
+
+        global_data.forEach(function(row){
+          words.push(row['word']);
+          probs.push(+row['global_prob']);
+        })
+        var data = [{
+          type: 'bar',
+          x: probs,
+          y: words,
+          orientation: 'h',
+          transforms: [{
+              type: 'sort',
+              target: 'y',
+              order: 'descending'
+            }]
+        }];
+        var layout = {
+          title: 'Global Word Probabilities',
+
+        };
+
+        Plotly.newPlot('topic_words', data, layout);
+
+      }
+
+
+      function load_main(){
+        d3.csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/coords.csv', function (data){
+         create_scatter(data)
+       })
+      }
+
+      function load_probs(){
+        d3.csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/global_probs.csv', function (data){
+         create_bar(data)
+       })
+      }
+
+    </script
+    </head>
+    <body  onload = "load_main(); load_probs();">
+      <h1>Tech Sector 10-K Topics</h1>
+      <div id = 'explorer'>
+      </div>
+      <div id = 'topic_words'>
+      </div>
+    </body>
+  </html>
