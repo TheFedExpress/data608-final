@@ -6,22 +6,24 @@ Created on Tue Nov 29 10:14:31 2016
 """
 
 from sklearn import manifold
-from sklearn.metrics import euclidean_distances
 from six import iteritems
 import numpy as np
 from pages_load import load_pages
-from gensim import corpora, models #similarities
+from gensim import corpora, models
 import csv
 from scipy.stats import entropy
 from scipy.spatial.distance import pdist, squareform
 import pandas as pd
 
+co_list = pd.read_csv('companylist.csv')
+
+num_topics = 50
 def _jensen_shannon(_P, _Q):
    _M = 0.5 * (_P + _Q)
    return 0.5 * (entropy(_P, _M) + entropy(_Q, _M))
 
 pages, tickers = load_pages()
-pages = pages
+
 
 dictionary = corpora.Dictionary(pages)
 once_ids = [tokenid for tokenid, docfreq in iteritems(dictionary.dfs) if docfreq == 1] 
@@ -31,9 +33,9 @@ dictionary.filter_tokens(commons)
 dictionary.compactify()
 
 corpus = [dictionary.doc2bow(page) for page in pages]
-lda = models.LdaModel(corpus = corpus, num_topics = 100, id2word = dictionary,passes = 10, alpha = .0005)
+lda = models.LdaModel(corpus = corpus, num_topics = num_topics, id2word = dictionary,passes = 10, alpha = .0005)
 
-output = lda.print_topics(num_topics = 100)
+output = lda.print_topics(num_topics = num_topics)
 topics = [lda.get_document_topics(element) for element in corpus]
 
 measure = []
@@ -42,25 +44,28 @@ for doc in topics:
         measure.append(tuple[0])
         
 counts = []
-for i in range(100):
+for i in range(num_topics):
     count = measure.count(i)
     counts.append(count)
 
 all_clus = []
 vectors =[]
-company_totals = []
 for i in range(len(topics)):
-    cluster_vector = np.zeros(100)
+    cluster_vector = np.zeros(num_topics)
     percentage = 0
     for j in range(len(topics[i])):
         all_clus.append({"ticker": tickers[i], "topic":topics[i][j][0], "percentage":topics[i][j][1]})
         cluster_vector[topics[i][j][0]] = topics[i][j][1]
     vectors.append(cluster_vector)
     
-company_totals = np.zeros(100)
-for item in all_clus:
-    company_totals[item["topic"]] = company_totals[item["topic"]] + item["percentage"]
-    
+
+all_clus = pd.DataFrame(all_clus)
+all_clus = all_clus.merge(co_list, left_on = 'ticker', right_on = 'Symbol')
+all_clus['share'] = all_clus['percentage'] * all_clus['MarketCap']
+company_totals = all_clus.groupby('topic')['percentage', 'MarketCap', 'share'].sum()
+company_totals.reset_index(inplace = True)
+
+##based on pyldavis source code 
 tokens = dictionary.token2id.values()
 tokes = [value for value in tokens]
 topic = lda.state.get_lambda()
@@ -71,6 +76,7 @@ topic_term_dists = topic[:,fnames_argsort]
 
 dist_matrix = squareform(pdist(topic_term_dists, metric=_jensen_shannon))
 model = manifold.MDS(n_components=2, random_state=0, metric='precomputed')
+#manifold like PCA, but is a generalization to find non-linear trends
 coords = model.fit_transform(dist_matrix)
 
 all_counts = [tup for item in corpus for tup in item]
@@ -82,7 +88,8 @@ corp_probs = corp_counts/np.sum(corp_counts)
 
 tws = []
 top_totals = []
-for i in range(100):
+word_counts = []
+for i in range(num_topics):
     tw = lda.show_topic(i,len(all_counts))
     top_total = 0
     for j in range(30):
@@ -95,35 +102,34 @@ for i in range(100):
                     }
         top_total += corp_counts[dictionary.token2id[tw[j][0]]] 
         tws.append(top_dict)
+        word_counts.append(top_total)
     top_totals.append(top_dict)
-    
-my_df = pd.DataFrame(tws)
-my_df.sort_values(by = ['top_num',  'saliency'], ascending = False, inplace = True)
-overall_tops = my_df.groupby('top_num').head(1)
+
+top_words = pd.DataFrame(tws)
+top_words.sort_values(by = ['top_num',  'saliency'], ascending = [True,False], inplace = True)
+overall_tops = top_words.groupby('top_num').head(1)
     
 coords_dicts = []
-for i in range(100):
+for i in range(num_topics):
     tw = lda.show_topic(i,1)
-    coords_dict = {"pc1": coords[i][0], "pc2" : coords[i][1],'Topic': overall_tops.iloc[i, 4], 
-                   "ticker": company_totals[i]
+    coords_dict = {'top_num': i, 
+                   "pc1": coords[i][0], 
+                   "pc2" : coords[i][1],
+                   'Topic': overall_tops.iloc[i, 4]
                    }
     coords_dicts.append(coords_dict)
 
-keys = ["ticker", "topic", "percentage"]
-with open("my_skills.csv", "w", newline = '') as a:
-    dictwriter=csv.DictWriter(a,fieldnames = keys)
-    dictwriter.writeheader()
-    dictwriter.writerows(all_clus)
+coords_df = pd.DataFrame(coords_dicts)
+coords_df = coords_df.merge(company_totals, how = 'left', left_on = 'top_num', right_on = 'topic')
+coords_df.fillna(0, inplace = True)
+coords_df['percentage'] = coords_df['percentage'].map(lambda x: max(x, 1))
+coords_df['share'] = coords_df['share'].map(lambda x: max(18, np.log(x)))
+coords_df.to_csv('coords.csv')
 
-keys = ["top_num", "word", "score", "global_prob", 'saliency' ]
-with open("top_words.csv", "w", newline = '') as a:
-    dictwriter=csv.DictWriter(a,fieldnames = keys)
-    dictwriter.writeheader()
-    dictwriter.writerows(tws)
-    
-keys = ["pc1", "pc2", "Topic", "ticker"]
-with open("coords.csv", "w", newline = '') as file:
-    dictwriter =  csv.DictWriter(file, fieldnames = keys)
-    dictwriter.writeheader()
-    dictwriter.writerows(coords_dicts)
+
+top_words.to_csv('top_words.csv')
+
+all_clus.to_csv('company_pct.csv')
+
+
     
