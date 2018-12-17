@@ -39,7 +39,7 @@ def get_stops():
           'agreement',	'due',	'support',	'interest',	'services',	'contract',	'customers',	'exist',	'process',	
           'estim',	'believ',	'fair',	'liabil',	'million',	'properti',	'revenu',	'perform',	'state',	
           'year',	'reduc',	'content',	'network',	'licens',	'would',	'primarili',	'quarter',	'leas',	'regul',
-          'use', 'also'
+          'use', 'also', 'item' , '31'
 
           }
           )
@@ -51,11 +51,12 @@ def get_words():
     import re
     
     all_words = []
+    directory = r'C:\Users\pgood\OneDrive\Documents\GitHub\Data 608 Final\Pages'
     stop_words = get_stops()
-    for root,dirs,files in os.walk('Pages'):
+    for root,dirs,files in os.walk(directory):
         for file in files:
-           if file.endswith(".json"):
-               file_name = os.path.join('pages', file)
+           if file.endswith(".txt"):
+               file_name = os.path.join(directory, file)
                f=open(file_name, 'r')
                try:
                    data = json.load(f)
@@ -79,12 +80,12 @@ def grams():
     
     bigram_measures = BigramAssocMeasures()
     finder = BigramCollocationFinder.from_words(words)
-    finder.apply_freq_filter(40)
+    finder.apply_freq_filter(800)
     bigrams = finder.nbest(bigram_measures.pmi, 500)
     
     trigram_measures = TrigramAssocMeasures()
     finder3 = TrigramCollocationFinder.from_words(words)
-    finder3.apply_freq_filter(100)
+    finder3.apply_freq_filter(300)
     trigrams = finder3.nbest(trigram_measures.pmi, 300)
     combos2 = [combo2[0]+ " " + combo2[1] for combo2 in bigrams]
     combos3 = [combo3[0]+ " " + combo3[1] + " " + combo3[2] for combo3 in trigrams]
