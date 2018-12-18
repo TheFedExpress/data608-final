@@ -1,8 +1,3 @@
-To-Dos
-
-Add company Chooser
-Make the words filter on hover.  
-Add saliency slider.
-Make additional pages
-If bubble sizing doesn't fix itself with more docs, come up with fix!
+The topic explorer crossfilters both bar graphs on the front page.
+The pie chart brings up the raw text and highlights the topic words
 
