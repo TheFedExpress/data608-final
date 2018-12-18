@@ -16,7 +16,7 @@ import pandas as pd
 
 co_list = pd.read_csv('companylist.csv')
 
-num_topics = 50
+num_topics = 30
 def _jensen_shannon(_P, _Q):
    _M = 0.5 * (_P + _Q)
    return 0.5 * (entropy(_P, _M) + entropy(_Q, _M))

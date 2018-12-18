@@ -16,16 +16,22 @@ base = 'https://www.sec.gov'
 def get_contents(soup):
     page_type = 'p'
     all_ps = soup.find_all('p')
+    all_fonts = soup.find_all('font')
+    if len(all_ps) > 0 and len(all_fonts) <= 1000:
+        page_type = 'p'
+    else:
+        page_type = 'pfont'
     if len(all_ps) == 0:
         all_ps = soup.find_all('font')
         page_type = 'font'
     if len(all_ps) == 0:
         all_ps = soup.final_all('div')
         page_type = 'div'
+        print(url)
     base_string = ''
     past_contents = False
     past_3 = False
-    
+    i = 0
     for ptag in all_ps:
         is_ital = False
         if page_type == 'p':
@@ -36,26 +42,48 @@ def get_contents(soup):
                 pass
             if len(bolds) >=1:
                 for bold in bolds:
-                    if bold.text.lower().strip() == 'part i':
+                    if bold.text.lower().strip() in ['part i', 'part\xa0i']:
                         print('hit')
                         past_contents = True
-                    elif bold.text.lower().strip() == 'part iii':
+                    elif bold.text.lower().strip() in ['part ii', 'part\xa0ii']:
                         print('done')
                         past_3 = True
+        elif page_type == 'pfont':
+            try:
+                if 'font-style:italic' in ptag.font['style'].lower():
+                    is_ital = True
+                if 'font-weight:bold' in ptag.font['style'].lower():
+                    a_parents = ptag.find_parents('a')
+                    a_parents = len(ptag.find_parents('a'))
+                    a_children = len(ptag.find_all('a'))
+                    a_tots = a_parents + a_children
+                    if  ptag.text.lower().strip() in ['part i', 'part\xa0i']:
+                        print(ptag.text.lower().strip())
+                        print(i)
+                        past_contents = True
+                    elif ptag.text.lower().strip() in ['part ii', 'part\xa0ii']:
+                        print(ptag.text.lower().strip())
+                        past_3 = True
+            except:
+                pass
         elif page_type == 'font':
             if 'font-style:italic' in ptag['style'].lower():
                 is_ital = True
             if 'font-weight:bold' in ptag['style'].lower():
-                a_parents = ptag.find_parents('a')
-                if ptag.text.lower().strip() == 'part i' and len(a_parents) == 0:
-                    print('hit')
+                a_parents = len(ptag.find_parents('a'))
+                a_children = len(ptag.find_all('a'))
+                a_tots = a_parents + a_children
+                if ptag.text.lower().strip() in ['part i', '\ufeffpart\xa0i'] and a_tots == 0:
+                    print(ptag.text.lower().strip())
                     past_contents = True
-                elif ptag.text.lower().strip() == 'part ii' and len(a_parents) == 0:
-                    print('done')
+                elif ptag.text.lower().strip() in ['part ii', 'part\xa0ii'] and a_tots == 0:
+                    print(ptag.text.lower().strip())
                     past_3 = True
-            
+    
+                    
         if past_3 == True:
             break
+            
         if past_contents and not past_3:
             is_bold = len(ptag.find_all('b')) > 1
             is_table = len(ptag.find_all('table')) > 1

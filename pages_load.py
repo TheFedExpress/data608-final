@@ -15,14 +15,15 @@ def load_pages():
     stemmer = SnowballStemmer('english')
     pages = []
     tickers = []
-    combos2, combos3 = grams()
+    
+    #combos2, combos3 = grams() Try in later iteration
     stop_words = get_stops()
-
-    for root,dirs,files in os.walk('Pages'):
+    directory = r'C:\Users\pgood\OneDrive\Documents\GitHub\Data 608 Final\Pages'
+    for root,dirs,files in os.walk(directory):
         for file in files:
             page_words = []
             
-            file_name = os.path.join('pages', file)
+            file_name = os.path.join(directory, file)
             f=open(file_name, 'r')
             try:
                d = json.load(f)
@@ -32,16 +33,16 @@ def load_pages():
             except TypeError:
                print("problem with a file")
             raw_page = d['page'].lower()
-            for combo2 in combos2:
-               two_word = combo2.split()
-               joiner = "_"
-               two_base = joiner.join(two_word)
-               raw_page = raw_page.replace(combo2, two_base)
-            for combo3 in combos3:
-               three_word = combo3.split()
-               joiner = "_"
-               three_base = joiner.join(three_word)
-               raw_page = raw_page.replace(combo3, three_base)
+            #for combo2 in combos2:
+               #two_word = combo2.split()
+               #joiner = "_"
+               #two_base = joiner.join(two_word)
+               #raw_page = raw_page.replace(combo2, two_base)
+            #for combo3 in combos3:
+               #three_word = combo3.split()
+               #joiner = "_"
+               #three_base = joiner.join(three_word)
+               #raw_page = raw_page.replace(combo3, three_base)
             words = raw_page.lower().split()
             for word in words:
                 stemmed_word = re.sub('\W+', '', stemmer.stem(word))
