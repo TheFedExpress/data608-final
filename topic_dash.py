@@ -26,11 +26,6 @@ def company_list():
 def get_cos ():
         return pd.read_csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/company_topics.csv')
     
-def get_topics():
-    return pd.read_csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/top_words.csv')
-def get_pcts():
-    return pd.read_csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/company_pct.csv')
-topics =  pd.read_csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/coords.csv')
 
 
 def word_graph(word_probs, topic):
@@ -180,7 +175,18 @@ def render_tabs(tabname):
 
 def topic_exlorer(value):
     import pandas as pd
-    topics =  pd.read_csv('https://raw.githubusercontent.com/TheFedExpress/data608-final/master/coords.csv')
+    import numpy as np
+    
+    raw = []
+    docs = db.coords.find()
+    for item in docs:
+        raw.append(item)
+    
+    topics =  pd.DataFrame(raw)
+    raw_vals = topics['share'].quantile([i/4 for i in range(5)])
+    caps = np.exp(topics['share']).quantile([i/4 for i in range(5)])
+    labs = ['${:,.0f}'.format(num) for num in caps.values]
+    print(labs)
     if value == 'Market Cap':
         figure={
             'data': [go.Scatter(
@@ -193,7 +199,10 @@ def topic_exlorer(value):
                             'sizemode' : 'area',
                             'sizeref': 2.*max(topics['percentage'])/(40.**2),
                             'sizemin': 4,
-                            'colorbar' :{'title': 'Market Cap'},
+                            'colorbar' :{'title': 'Market Cap', 'tickmode': 'array',
+                                         'tickvals': raw_vals,
+                                         'ticktext': labs
+                                         },
                             'colorscale': 'Viridis'
                     },
                     text = topics['topic'],
@@ -246,10 +255,19 @@ def topic_exlorer(value):
 
 
 def update_word_probs(clickData):
-    topic_df = get_topics()
+    
+    #topic_df = get_topics()
     topic = clickData['points'][0]['hoverinfo']
     name = clickData['points'][0]['text']
-    topic_words = topic_df.loc[topic_df.top_num == topic, :].sort_values(by = 'saliency')
+    
+    raw = []
+    docs = db.top_words.find({'top_num' : topic})
+    for item in docs:
+        raw.append(item)
+    topic_words = pd.DataFrame(raw)
+
+   
+    #topic_words = topic_df.loc[topic_df.top_num == topic, :].sort_values(by = 'saliency')
     figure = word_graph(topic_words, name)
     return figure
 
@@ -260,13 +278,24 @@ def update_word_probs(clickData):
 
 
 def update_cos(clickData):
-    company_df = get_cos()
+    
+    #company_df = get_cos()
     topic = clickData['points'][0]['hoverinfo']
-    name = clickData['points'][0]['text']
-    company_topics = company_df.loc[
-            company_df.topic == topic, :].sort_values(by = 'percentage', ascending = False)
-    rows = len(company_topics.index)
-    company_topics = company_topics.head(min(15, rows))
+    name = clickData['points'][0]['text']  
+    
+    raw = []
+    docs = db.company_pct.find({'top_num' : topic})
+    for item in docs:
+        raw.append(item)
+        
+    df = pd.DataFrame(raw)
+    df.sort_values(by = 'percentage', inplace = True, ascending = False)
+
+    #company_topics = company_df.loc[
+    #       company_df.topic == topic, :].sort_values(by = 'percentage', ascending = False)
+    
+    rows = len(df.index)
+    company_topics = df.head(min(15, rows))
     
     figure = company_portions(company_topics, name)
     return figure 
@@ -277,8 +306,17 @@ def update_cos(clickData):
     )      
 
 def pie_graph(value):
-    df = get_pcts()
-    df = df.loc[df['ticker'] == value, :]
+    
+    raw = []
+    docs = db.company_pct.find({'ticker' : value})
+    for item in docs:
+        raw.append(item)
+        
+    df = pd.DataFrame(raw)
+    #df = get_pcts()
+    #df = df.loc[df['ticker'] == value, :]
+    
+    
     figure = {
             'data': [go.Pie(labels = df['top_num'], 
                            values = df['percentage'],
@@ -303,11 +341,15 @@ def pie_graph(value):
 
 def highlight_text(clickData, value):
     
-    topics = get_topics()
+    
     topic = int(clickData['points'][0]['label'])
     page = db.pages.find_one({'ticker' : value})['page']
     
-    top_words = topics.loc[topics.top_num == topic, 'word'].values
+    top_words = []
+    docs = db.top_words.find({'top_num': topic})
+    for item in docs:
+        top_words.append(item['word'])
+    #top_words = topics.loc[topics.top_num == topic, 'word'].values
     new_words = page.split()
     """
     children = []
