@@ -137,7 +137,7 @@ coords_df.fillna(0, inplace = True)
 coords_df = coords_df.merge(top_sector, how = 'left', on = 'top_num')
 coords_df.fillna('No Sector', inplace = True)
 
-coords_df['percentage'] = coords_df['percentage'].map(lambda x: max(np.log(x), 1))
+coords_df['percentage'] = coords_df['percentage'].map(lambda x: max(x, 12))
 
 coords_df['share'] = coords_df['share'].map(lambda x: max(18, np.log(x)))
 #coords_df.to_csv('coords.csv')
